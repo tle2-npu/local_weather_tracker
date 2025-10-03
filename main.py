@@ -1,5 +1,6 @@
 from models import Observation, NoteUpdate
 from database import get_connection, create_table
+import requests
 
 create_table() 
  
@@ -10,3 +11,7 @@ def ingest_weather(city: str, country: str):
         raise HTTPException(status_code=404, detail="City not found")
     geo = geo_res["results"][0]
     lat, lon = geo["latitude"], geo["longitude"] 
+
+weather_url = "https://api.open-meteo.com/v1/forecast"
+weather_res = requests.get(weather_url, params={"latitude": lat, "longitude": lon, "current_weather": True}).json()
+cw = weather_res["current_weather"] 
