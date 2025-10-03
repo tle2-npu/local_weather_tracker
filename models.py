@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 
-# Create class
+# Create subclass
 class Observation(BaseModel):
     city: str
     country: str
@@ -9,4 +9,4 @@ class Observation(BaseModel):
     longitude: float
     temperature: float
     windspeed: float
-    observation_time: str
+    observation_time: str 
