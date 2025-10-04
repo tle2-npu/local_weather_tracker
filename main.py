@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException
-import sqlite3
-import requests
+import sqlite3, requests
 
 app = FastAPI(title="Local Weather Tracker")
 
@@ -9,7 +8,19 @@ DB_FILE = "weather.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute()
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS observations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        city TEXT,
+        country TEXT,
+        latitude REAL,
+        longitude REAL,
+        temperature REAL,
+        windspeed REAL,
+        observation_time TEXT,
+        notes TEXT
+    )
+""")
     conn.commit()
     conn.close()
 
@@ -29,15 +40,18 @@ def ingest_weather(city: str, country: str):
     weather_res = requests.get(weather_url, params={"latitude": lat, "longitude": lon, "current_weather": True}).json()
     cw = weather_res["current_weather"]
 
-    conn = get_connection()
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
+    cur.execute("""
+    INSERT
+    (city, country, latitude, longitude, temperature, windspeed, observation_time)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+""", (city, country, lat, lon, cw["temperature"], cw["windspeed"], cw["time"]))
     obs_id = cur.lastrowid
-
-    cur.execute(city, country, lat, lon, cw["temperature"], cw["windspeed"], cw["time"])
+    conn.commit()
     cur.close()
     conn.close()
-    conn.commit()
-
+    
     return {
         "id": obs_id,
         "city": city,
@@ -56,7 +70,7 @@ def get_observations():
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute("SELECT FROM observations")
+    cur.execute("SELECT * FROM observations")
     rows = [dict(r) for r in cur.fetchall()]
     conn.close()
     return rows
@@ -66,7 +80,7 @@ def get_observation(obs_id: int):
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute("SELECT FROM observations WHERE id=?", (obs_id))
+    cur.execute("SELECT * FROM observations WHERE id=?", (obs_id,))
     row = cur.fetchone()
     conn.close()
 
@@ -76,17 +90,17 @@ def get_observation(obs_id: int):
 
 # PUT 
 @app.put("/observations/{obs_id}")
-def update_observation(obs_id: int):
+def update_observation(obs_id: int, notes: str):
     conn = sqlite3.connect(DB_FILE) 
     cur = conn.cursor()
-    cur.execute("UPDATE observations SET WHERE id=?", (obs_id))
+    cur.execute("UPDATE observations SET notes=? WHERE id=?", (notes, obs_id))
 
     if cur.rowcount == 0:
         conn.close()
         raise HTTPException(status_code = 404, detail = "Observation not found")
     conn.commit()
     conn.close()
-    return {"id": obs_id}
+    return {"id": obs_id, "notes": notes}
 
 
 # DELETE  
@@ -94,13 +108,13 @@ def update_observation(obs_id: int):
 def delete_observation(obs_id: int):
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("DELETE FROM observations WHERE id=?", (obs_id))
+    cur.execute("DELETE FROM observations WHERE id=?", (obs_id,))
 
     if cur.rowcount == 0:
         conn.close()
         raise HTTPException(status_code = 404, detail = "Observation not found")
     conn.commit()
     conn.close()
-    return {"id": obs_id}
+    return {"deleted": obs_id}
 
 
