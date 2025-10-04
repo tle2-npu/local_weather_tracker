@@ -1,11 +1,19 @@
-from models import Observation, NoteUpdate
-from database import get_connection, create_table
-import requests
 from fastapi import FastAPI, HTTPException
+import sqlite3
+import requests
 
 app = FastAPI(title="Local Weather Tracker")
-create_table() 
- 
+
+DB_FILE = "weather.db"
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute()
+    conn.commit()
+    conn.close()
+
+init_db()  
+
 # POST  
 @app.post("/ingest")
 def ingest_weather(city: str, country: str):
@@ -23,9 +31,33 @@ def ingest_weather(city: str, country: str):
     conn = get_connection()
     cur = conn.cursor()
 
+    cur.execute(city, country, lat, lon, cw["temperature"], cw["windspeed"], cw["time"])
     cur.close()
     conn.close()
+    conn.commit()
+
+    obs_id = cur.lastrowid
+
+    return {
+        "id": obs_id,
+        "city": city,
+        "country": country,
+        "latitude": lat,
+        "longitude": lon,
+        "temperature": cw["temperature"],
+        "windspeed": cw["windspeed"],
+        "observation_time": cw["time"],
+        "notes": None
+    }
 
 # GET 
 @app.get("/observations")
-def get_all_observations(): 
+def get_observations(): 
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM observations")
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+
+@app.get("/observations/{obs_id}") 
