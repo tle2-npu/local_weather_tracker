@@ -60,4 +60,25 @@ def get_observations():
     rows = [dict(r) for r in cur.fetchall()]
     conn.close()
 
-@app.get("/observations/{obs_id}") 
+@app.get("/observations/{obs_id}")
+def update_observation(obs_id: int, notes: str):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("UPDATE observations SET notes=? WHERE id=?", (notes, obs_id))
+
+# PUT 
+@app.put("/observations/{obs_id}")
+def update_observation(obs_id: int, notes: str):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("UPDATE observations SET notes=? WHERE id=?", (notes, obs_id))
+
+
+# DELETE  
+@app.delete("/observations/{obs_id}")
+def delete_observation(obs_id: int):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM observations WHERE id=?", (obs_id,))
+
+
