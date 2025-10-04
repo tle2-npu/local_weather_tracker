@@ -21,7 +21,7 @@ def ingest_weather(city: str, country: str):
     geo_url = "https://geocoding-api.open-meteo.com/v1/search"
     geo_res = requests.get(geo_url, params={"name": city, "country": country, "count": 1}).json()
     if "results" not in geo_res:
-        raise HTTPException(status_code = 404, detail="City not found")
+        raise HTTPException(status_code = 404, detail = "City not found")
     geo = geo_res["results"][0]
     lat, lon = geo["latitude"], geo["longitude"] 
 
@@ -66,20 +66,27 @@ def get_observation(obs_id: int):
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute("SELECT FROM observations WHERE id=?", (obs_id,))
+    cur.execute("SELECT FROM observations WHERE id=?", (obs_id))
     row = cur.fetchone()
     conn.close()
 
     if not row:
-        raise HTTPException(status_code = 404, detail="Observation not found")
+        raise HTTPException(status_code = 404, detail = "Observation not found")
     return dict(row)
 
 # PUT 
 @app.put("/observations/{obs_id}")
-def update_observation(obs_id: int, notes: str):
-    conn = sqlite3.connect(DB_FILE)
+def update_observation(obs_id: int):
+    conn = sqlite3.connect(DB_FILE) 
     cur = conn.cursor()
-    cur.execute("UPDATE observations SET notes=? WHERE id=?", (notes, obs_id))
+    cur.execute("UPDATE observations SET WHERE id=?", (obs_id))
+
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code = 404, detail = "Observation not found")
+    conn.commit()
+    conn.close()
+    return {"id": obs_id}
 
 
 # DELETE  
@@ -87,6 +94,13 @@ def update_observation(obs_id: int, notes: str):
 def delete_observation(obs_id: int):
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("DELETE FROM observations WHERE id=?", (obs_id,))
+    cur.execute("DELETE FROM observations WHERE id=?", (obs_id))
+
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code = 404, detail = "Observation not found")
+    conn.commit()
+    conn.close()
+    return {"id": obs_id}
 
 
