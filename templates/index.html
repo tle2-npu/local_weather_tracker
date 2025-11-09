@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Weather Observations</h2>
+<ul>
+  {% for c in cities %}
+    <li>{{ c }}</li>
+  {% endfor %}
+</ul>
+{% endblock %}
