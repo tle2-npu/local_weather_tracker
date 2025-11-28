@@ -1,16 +1,22 @@
+import os
+from dotenv import load_dotenv
 import psycopg
 
-class DatabaseConnection:
-        
-    def __init__(self, dbname, user, password, host='localhost', port=5432):
-        self.dbname = dbname
-        self.user = user
-        self.password = password
-        self.host = host
-        self.port = port
-        self.conn = None
+load_dotenv()         # Load variables .env file 
 
-    # Connect 
+class DatabaseManager:
+
+    def __init__(self):
+        self.dbname = os.getenv("DB_NAME")
+        self.user = os.getenv("DB_USER")
+        self.password = os.getenv("DB_PASSWORD")
+        self.host = os.getenv("DB_HOST")
+        self.port = os.getenv("DB_PORT")
+        self.conn = None
+        self.cursor = None
+
+        self.connect()
+
     def connect(self):
         try:
             self.conn = psycopg.connect(
@@ -20,12 +26,7 @@ class DatabaseConnection:
                 host=self.host,
                 port=self.port
             )
-            return self.conn
+            self.cursor = self.conn.cursor()
+            print("Connected to PostgreSQL successfully")
         except Exception as e:
             print("Database connection error:", str(e))
-            return None
-
-    def close(self):
-        """Close the connection safely"""
-        if self.conn:
-            self.conn.close()
