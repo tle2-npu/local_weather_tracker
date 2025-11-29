@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}All Observations{% endblock %}
+
+{% block content %}
+<h2>Weather Observations</h2>
+
+{% if records|length == 0 %}
+    <p>No observations found.</p>
+{% else %}
+<table>
+    <tr>
+        <th>ID</th>
+        <th>City</th>
+        <th>Temp</th>
+        <th>Wind</th>
+        <th>View</th>
+    </tr>
+
+    {% for obs in records %}
+    <tr>
+        <td>{{ obs.city_id }}</td>
+        <td>{{ obs.city }}</td>
+        <td>{{ obs.temperature }}</td>
+        <td>{{ obs.windspeed }}</td>
+        <td><a href="/observations/{{ obs.city_id }}">Details</a></td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+<a href="/">Back Home</a>
+{% endblock %}

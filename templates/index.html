@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h2>Welcome to Local Weather Tracker</h2>
+
+<h3>
+    This application allows you to:
+</h3>
+<ul>
+    <li>Fetch live weather data from Open-Meteo API</li>
+    <li>Save observations to your PostgreSQL database</li>
+    <li>View, update, and delete stored weather observations</li>
+</ul>
+
+<a href="/observations" class="btn">View All Observations</a>
+{% endblock %}
