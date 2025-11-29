@@ -1,5 +1,6 @@
 import requests
-import time 
+import time
+from db_connection import WeatherObservation 
 
 Geocoding_URL = "https://geocoding-api.open-meteo.com/v1/search" 
 Weather_URL = "https://api.open-meteo.com/v1/forecast?current_weather=true"
@@ -15,7 +16,7 @@ def simple_get(url, params=None):
             time.sleep(1)                 
     return None                           
 
-def fetch_weather_for_city(city, country):
+def fetch_weather_for_city(city, country="N/A"):
     # Get latitude/longitude 
     geo_params = {
         "name": city,
