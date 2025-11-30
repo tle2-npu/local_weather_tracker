@@ -1,33 +1,34 @@
 {% extends "base.html" %}
 
-{% block title %}All Observations{% endblock %}
+{% block title %}Observations{% endblock %}
 
 {% block content %}
-<h2>Weather Observations</h2>
+<h2>All Weather Observations</h2>
 
-{% if records|length == 0 %}
-    <p>No observations found.</p>
-{% else %}
 <table>
     <tr>
         <th>ID</th>
         <th>City</th>
-        <th>Temp</th>
-        <th>Wind</th>
-        <th>View</th>
+        <th>Temperature</th>
+        <th>Windspeed</th>
+        <th>Actions</th>
     </tr>
 
-    {% for obs in records %}
+    {% for row in observations %}
     <tr>
-        <td>{{ obs.city_id }}</td>
-        <td>{{ obs.city }}</td>
-        <td>{{ obs.temperature }}</td>
-        <td>{{ obs.windspeed }}</td>
-        <td><a href="/observations/{{ obs.city_id }}">Details</a></td>
+        <td>{{ row.city_id }}</td>
+        <td><a href="/observations/{{ row.city_id }}">{{ row.city }}</a></td>
+        <td>{{ row.temperature }}</td>
+        <td>{{ row.windspeed }}</td>
+        <td>
+            <a href="/observations/{{ row.city_id }}/update">Update</a> |
+            <a href="/observations/{{ row.city_id }}/delete">Delete</a>
+        </td>
     </tr>
     {% endfor %}
 </table>
-{% endif %}
 
-<a href="/">Back Home</a>
+<br>
+<a class="btn" href="/">Back Home</a>
+<a class="btn" href="/ingest">Add New City</a>
 {% endblock %}
