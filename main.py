@@ -1,6 +1,5 @@
 import requests
-import time
-from db_connection import WeatherObservation 
+import time 
 
 Geocoding_URL = "https://geocoding-api.open-meteo.com/v1/search" 
 Weather_URL = "https://api.open-meteo.com/v1/forecast?current_weather=true"
@@ -16,7 +15,7 @@ def simple_get(url, params=None):
             time.sleep(1)                 
     return None                           
 
-def fetch_weather_for_city(city, country="N/A"):
+def fetch_weather_for_city(city):
     # Get latitude/longitude 
     geo_params = {
         "name": city,
@@ -29,10 +28,18 @@ def fetch_weather_for_city(city, country="N/A"):
     if not geo_response:
         print("Geocoding failed")
         return None
+    
+    geo_json = geo_response.json()
 
-    geo_data = geo_response.json()["results"][0]
+    if "results" not in geo_json:
+        print(f"No geocoding results for {city}")
+        return None
+
+    geo_data = geo_json["results"][0]
+
     latitude = geo_data["latitude"]
     longitude = geo_data["longitude"]
+    country = geo_data.get("country", "Unknown")
     print("Geocoding status:", geo_response.status_code) 
     print("Geocoding URL:", geo_response.url) 
 
@@ -56,13 +63,13 @@ def fetch_weather_for_city(city, country="N/A"):
     return {
         "city": city,
         "country": country,
+        "temperature": weather_data["temperature"],
+        "windspeed": weather_data["windspeed"],
         "latitude": latitude,
         "longitude": longitude,
-        "temperature_c": weather_data["temperature"],
-        "windspeed_kmh": weather_data["windspeed"],
         "observation_time": weather_data["time"]
     }
 
 if __name__ == "__main__":
-    data = fetch_weather_for_city("Chicago", "US")
+    data = fetch_weather_for_city("Tokyo")
     print(data)
