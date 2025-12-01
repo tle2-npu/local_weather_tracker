@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 import psycopg
-from psycopg import OperationalError
+from psycopg.errors import OperationalError, DatabaseError
 from psycopg.rows import dict_row
 
 load_dotenv()         # Load credentials .env file 
@@ -25,104 +25,130 @@ class DatabaseManager:
             return None
 
     def get_all_observations(self):
-        query = "SELECT * FROM weather_observations ORDER BY city_id;"
         conn = self._connect()
         if not conn:
             return []
 
-        with conn.cursor() as cur:
-            cur.execute(query)
-            rows = cur.fetchall()
-
-        conn.close()
-        return rows
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM weather_observations ORDER BY city_id;")
+                return cur.fetchall()  
+        except DatabaseError as e:
+            print("Error fetching observations:", e)
+            return []
+        finally:  
+            conn.close()
 
     def get_observation_by_id(self, obs_id):
-        query = "SELECT * FROM weather_observations WHERE city_id = %s;"
         conn = self._connect()
         if not conn:
             return None
+        
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM weather_observations WHERE city_id = %s;", (obs_id,),)
+                return cur.fetchone()
+        except DatabaseError as e:
+            print("Error fetching observation by ID:", e)
+            return None
+        finally:
+            conn.close()
 
-        with conn.cursor() as cur:
-            cur.execute(query, (obs_id,))
-            row = cur.fetchone()
-
-        conn.close()
-        return row
-    
     def insert_observation(self, weather):
-        """
-        weather = {
-            'city': ...,
-            'temperature': ...,
-            'windspeed': ...,
-            'latitude': ...,
-            'longitude': ...,
-            'observation_time': ...
-        }
-        """
-
-        query = """
-            INSERT INTO weather_observations 
-                (city, temperature, windspeed, latitude, longitude, observation_time)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING *;
-        """
-
         conn = self._connect()
         if not conn:
             return None
 
-        with conn.cursor() as cur:
-            cur.execute(query, (
-                weather["city"],
-                weather["temperature"],
-                weather["windspeed"],
-                weather["latitude"],
-                weather["longitude"],
-                weather["observation_time"]
-            ))
-            new_row = cur.fetchone()
-            conn.commit()
+        try:
+            with conn.cursor() as cur:
+                query = """
+                    INSERT INTO weather_observations (city, temperature, windspeed, latitude, longitude, observation_time)
+                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;
+                """
 
-        conn.close()
-        return new_row
+                cur.execute(query, (
+                    weather["city"],
+                    weather["temperature"],
+                    weather["windspeed"],
+                    weather["latitude"],
+                    weather["longitude"],
+                    weather["observation_time"],
+                ))
 
-    def update_observation(self, obs_id, temp, wind):
-        query = """
-            UPDATE weather_observations
-            SET temperature = %s,
-                windspeed = %s
-            WHERE city_id = %s
-            RETURNING *;
-        """
+                new_record = cur.fetchone()
+                conn.commit()
+                return new_record
 
+        except DatabaseError as e:
+            print("Insert error:", e)
+            conn.rollback()
+            return None
+
+        finally:
+            conn.close()
+
+    def update_observation(self, obs_id, temperature, windspeed):
         conn = self._connect()
         if not conn:
             return None
 
-        with conn.cursor() as cur:
-            cur.execute(query, (temp, wind, obs_id))
-            updated = cur.fetchone()
-            conn.commit()
+        try:
+            with conn.cursor() as cur:
+                query = """
+                    UPDATE weather_observations
+                    SET temperature = %s,
+                        windspeed = %s
+                    WHERE city_id = %s RETURNING *;
+                """
 
-        conn.close()
-        return updated
+                cur.execute(query, (temperature, windspeed, obs_id))
+
+                # Check if record exists
+                updated = cur.fetchone()
+                if not updated:
+                    print("No record found to update.")
+                    return None
+
+                conn.commit()
+                return updated
+
+        except DatabaseError as e:
+            print("Update error:", e)
+            conn.rollback()
+            return None
+
+        finally:
+            conn.close()
 
     def delete_observation(self, obs_id):
-        query = "DELETE FROM weather_observations WHERE city_id = %s RETURNING city_id;"
-
         conn = self._connect()
         if not conn:
             return None
 
-        with conn.cursor() as cur:
-            cur.execute(query, (obs_id,))
-            deleted = cur.fetchone()
-            conn.commit()
+        try:
+            with conn.cursor() as cur:
+                query = """
+                    DELETE FROM weather_observations
+                    WHERE city_id = %s RETURNING *;
+                """
 
-        conn.close()
-        return deleted
+                cur.execute(query, (obs_id,))
+                deleted = cur.fetchone()
+
+                if not deleted:
+                    print("No record found to delete.")
+                    return None
+
+                conn.commit()
+                return deleted
+
+        except DatabaseError as e:
+            print("Delete error:", e)
+            conn.rollback()
+            return None
+
+        finally:
+            conn.close()
 
 if __name__ == "__main__":
     db = DatabaseManager()
