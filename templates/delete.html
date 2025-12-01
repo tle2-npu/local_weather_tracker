@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Observation{% endblock %}
+
+{% block content %}
+<h2>Delete Observation</h2>
+
+{% if record %}
+<p>Are you sure you want to delete <strong>{{ record.city }}</strong>?</p>
+
+<form method="POST">
+    <button type="submit">Confirm Delete</button>
+</form>
+{% endif %}
+
+{% if deleted %}
+<h3>Deleted Successfully!</h3>
+{% endif %}
+
+<br>
+<a href="/observations" class="btn">Back</a>
+{% endblock %}

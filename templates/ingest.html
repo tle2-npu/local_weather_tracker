@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Ingest City{% endblock %}
+
+{% block content %}
+<h2>Add New City Weather</h2>
+
+<form method="POST">
+    <label>City Name:</label><br>
+    <input type="text" name="city" required>
+    <button type="submit">Fetch & Save</button>
+</form>
+
+{% if new_record %}
+    <h3>Saved Successfully!</h3>
+    <p><strong>City:</strong> {{ new_record.city }}</p>
+{% endif %}
+
+<br>
+<a href="/observations" class="btn">Back</a>
+{% endblock %}
