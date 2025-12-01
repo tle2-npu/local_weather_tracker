@@ -2,47 +2,127 @@ import os
 from dotenv import load_dotenv
 import psycopg
 from psycopg import OperationalError
-from datetime import datetime 
+from psycopg.rows import dict_row
 
-load_dotenv()         # Load variables .env file 
-
-class WeatherObservation:
-    """WeatherObservation class maps to weather_observations table"""
-
-    def __init__(self, city, country="N/A", temperature=None, windspeed=None,
-                 latitude=None, longitude=None, observation_time=None, city_id=None):
-        self.city_id = city_id
-        self.city = city
-        self.country = country
-        self.temperature = temperature
-        self.windspeed = windspeed
-        self.latitude = latitude
-        self.longitude = longitude
-        self.observation_time = observation_time or datetime.now()
-
-    def __repr__(self):
-        return (f"<WeatherObservation(id={self.city_id}, city='{self.city}', temp={self.temperature}, "
-                f"windspeed={self.windspeed}, lat={self.latitude}, lon={self.longitude}, "
-                f"time={self.observation_time})>")
+load_dotenv()         # Load credentials .env file 
 
 class DatabaseManager:
     def __init__(self):
-        self.dbname = os.getenv("DB_NAME")
-        self.user = os.getenv("DB_USER")
-        self.password = os.getenv("DB_PASSWORD")
-        self.host = os.getenv("DB_HOST")
-        self.port = os.getenv("DB_PORT")    
+        self.config = {
+            "dbname": os.getenv("DB_NAME"),
+            "user": os.getenv("DB_USER"),
+            "password": os.getenv("DB_PASSWORD"),
+            "host": os.getenv("DB_HOST"),
+            "port": os.getenv("DB_PORT"),
+        }    
 
     def _connect(self):
+        """Establish a database connection"""
         try:
-            conn = psycopg.connect(
-                dbname=self.dbname,
-                user=self.user,
-                password=self.password,
-                host=self.host,
-                port=self.port
-            )
-            return conn
+            return psycopg.connect(**self.config, row_factory=dict_row)
         except OperationalError as e:
             print("Database connection error:", e)
-            return None 
+            return None
+
+    def get_all_observations(self):
+        query = "SELECT * FROM weather_observations ORDER BY city_id;"
+        conn = self._connect()
+        if not conn:
+            return []
+
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+
+        conn.close()
+        return rows
+
+    def get_observation_by_id(self, obs_id):
+        query = "SELECT * FROM weather_observations WHERE city_id = %s;"
+        conn = self._connect()
+        if not conn:
+            return None
+
+        with conn.cursor() as cur:
+            cur.execute(query, (obs_id,))
+            row = cur.fetchone()
+
+        conn.close()
+        return row
+    
+    def insert_observation(self, weather):
+        """
+        weather = {
+            'city': ...,
+            'temperature': ...,
+            'windspeed': ...,
+            'latitude': ...,
+            'longitude': ...,
+            'observation_time': ...
+        }
+        """
+
+        query = """
+            INSERT INTO weather_observations 
+                (city, temperature, windspeed, latitude, longitude, observation_time)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING *;
+        """
+
+        conn = self._connect()
+        if not conn:
+            return None
+
+        with conn.cursor() as cur:
+            cur.execute(query, (
+                weather["city"],
+                weather["temperature"],
+                weather["windspeed"],
+                weather["latitude"],
+                weather["longitude"],
+                weather["observation_time"]
+            ))
+            new_row = cur.fetchone()
+            conn.commit()
+
+        conn.close()
+        return new_row
+
+    def update_observation(self, obs_id, temp, wind):
+        query = """
+            UPDATE weather_observations
+            SET temperature = %s,
+                windspeed = %s
+            WHERE city_id = %s
+            RETURNING *;
+        """
+
+        conn = self._connect()
+        if not conn:
+            return None
+
+        with conn.cursor() as cur:
+            cur.execute(query, (temp, wind, obs_id))
+            updated = cur.fetchone()
+            conn.commit()
+
+        conn.close()
+        return updated
+
+    def delete_observation(self, obs_id):
+        query = "DELETE FROM weather_observations WHERE city_id = %s RETURNING city_id;"
+
+        conn = self._connect()
+        if not conn:
+            return None
+
+        with conn.cursor() as cur:
+            cur.execute(query, (obs_id,))
+            deleted = cur.fetchone()
+            conn.commit()
+
+        conn.close()
+        return deleted
+
+if __name__ == "__main__":
+    db = DatabaseManager()
