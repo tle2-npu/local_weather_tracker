@@ -20,7 +20,6 @@ def fetch_weather_for_city(city):
     geo_params = {
         "name": city,
         "count": 1,
-        "format": "json"
     }
 
     geo_response = simple_get(Geocoding_URL, params=geo_params)
@@ -40,9 +39,7 @@ def fetch_weather_for_city(city):
     latitude = geo_data["latitude"]
     longitude = geo_data["longitude"]
     country = geo_data.get("country", "Unknown")
-    print("Geocoding status:", geo_response.status_code) 
-    print("Geocoding URL:", geo_response.url) 
-
+   
     # Get current weather info 
     weather_params = {
         "latitude": latitude,
@@ -57,9 +54,7 @@ def fetch_weather_for_city(city):
         return None
     
     weather_data = weather_response.json()["current_weather"]
-    print("Weather Status:", weather_response.status_code)
-    print("Weather URL:", weather_response.url)
-
+    
     return {
         "city": city,
         "country": country,

@@ -23,132 +23,79 @@ class DatabaseManager:
         except OperationalError as e:
             print("Database connection error:", e)
             return None
+        
+    def _execute(self, query, params=None, fetch="all"):
+        """eliminates repetition"""
 
-    def get_all_observations(self):
         conn = self._connect()
         if not conn:
-            return []
+            return None
 
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT * FROM weather_observations ORDER BY city_id;")
-                return cur.fetchall()  
+                cur.execute(query, params)
+
+                if fetch == "one":
+                    result = cur.fetchone()
+                elif fetch == "none":
+                    result = None
+                else:
+                    result = cur.fetchall()
+
+                conn.commit()
+                return result
+
         except DatabaseError as e:
-            print("Error fetching observations:", e)
-            return []
-        finally:  
+            print("DatabaseError:", e)
+            conn.rollback()
+            return None
+
+        finally:
             conn.close()
+
+    # CRUD 
+    def get_all_observations(self):
+        return self._execute("SELECT * FROM weather_observations ORDER BY city_id;")
 
     def get_observation_by_id(self, obs_id):
-        conn = self._connect()
-        if not conn:
-            return None
-        
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT * FROM weather_observations WHERE city_id = %s;", (obs_id,),)
-                return cur.fetchone()
-        except DatabaseError as e:
-            print("Error fetching observation by ID:", e)
-            return None
-        finally:
-            conn.close()
+        return self._execute(
+            "SELECT * FROM weather_observations WHERE city_id = %s;",
+            (obs_id,),
+            fetch="one"
+        )
 
-    def insert_observation(self, weather):
-        conn = self._connect()
-        if not conn:
-            return None
+    def insert_observation(self, w):
+        return self._execute(
+            """
+            INSERT INTO weather_observations (city, temperature, windspeed, latitude, longitude, observation_time)
+            VALUES (%s, %s, %s, %s, %s, %s) 
+            RETURNING *;
+            """,
+            (w["city"], w["temperature"], w["windspeed"], w["latitude"], w["longitude"], w["observation_time"]),
+            fetch="one"
+        )
 
-        try:
-            with conn.cursor() as cur:
-                query = """
-                    INSERT INTO weather_observations (city, temperature, windspeed, latitude, longitude, observation_time)
-                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;
-                """
-
-                cur.execute(query, (
-                    weather["city"],
-                    weather["temperature"],
-                    weather["windspeed"],
-                    weather["latitude"],
-                    weather["longitude"],
-                    weather["observation_time"],
-                ))
-
-                new_record = cur.fetchone()
-                conn.commit()
-                return new_record
-
-        except DatabaseError as e:
-            print("Insert error:", e)
-            conn.rollback()
-            return None
-
-        finally:
-            conn.close()
-
-    def update_observation(self, obs_id, temperature, windspeed):
-        conn = self._connect()
-        if not conn:
-            return None
-
-        try:
-            with conn.cursor() as cur:
-                query = """
-                    UPDATE weather_observations
-                    SET temperature = %s,
-                        windspeed = %s
-                    WHERE city_id = %s RETURNING *;
-                """
-
-                cur.execute(query, (temperature, windspeed, obs_id))
-
-                # Check if record exists
-                updated = cur.fetchone()
-                if not updated:
-                    print("No record found to update.")
-                    return None
-
-                conn.commit()
-                return updated
-
-        except DatabaseError as e:
-            print("Update error:", e)
-            conn.rollback()
-            return None
-
-        finally:
-            conn.close()
+    def update_observation(self, obs_id, temp, wind):
+        return self._execute(
+            """
+            UPDATE weather_observations
+            SET temperature=%s, windspeed=%s
+            WHERE city_id=%s
+            RETURNING *;
+            """,
+            (temp, wind, obs_id),
+            fetch="one"
+        )
 
     def delete_observation(self, obs_id):
-        conn = self._connect()
-        if not conn:
-            return None
-
-        try:
-            with conn.cursor() as cur:
-                query = """
-                    DELETE FROM weather_observations
-                    WHERE city_id = %s RETURNING *;
-                """
-
-                cur.execute(query, (obs_id,))
-                deleted = cur.fetchone()
-
-                if not deleted:
-                    print("No record found to delete.")
-                    return None
-
-                conn.commit()
-                return deleted
-
-        except DatabaseError as e:
-            print("Delete error:", e)
-            conn.rollback()
-            return None
-
-        finally:
-            conn.close()
+        return self._execute(
+            """
+            DELETE FROM weather_observations WHERE city_id=%s
+            RETURNING *;
+            """,
+            (obs_id,),
+            fetch="one"
+        )    
 
 if __name__ == "__main__":
     db = DatabaseManager()
